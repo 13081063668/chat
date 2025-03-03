@@ -28,7 +28,6 @@ public class ChatEndpoint {
 
     // 使用static静态变量，使对象绑定类
     private static final Map<String, Session> users = new ConcurrentHashMap<>();
-
     private HttpSession httpSession;
     /**
      * 建立websocket连接后调用
@@ -140,7 +139,7 @@ public class ChatEndpoint {
     @OnClose
     public void onClose(Session session) throws IOException {
         String username = (String) httpSession.getAttribute("user");
-        users.put(username, null);
+        users.remove(username);
         System.out.println("username:" + username + " is logout!");
         session.close();
 

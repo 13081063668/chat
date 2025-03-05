@@ -120,6 +120,7 @@
         el: "#app",
         data() {
             return {
+                baseIp:"10.129.88.106",
                 isShowChat: false,
                 chatMes: false,
                 isOnline: true,
@@ -145,7 +146,10 @@
                 systemMessages : [
                     /*"张三",
                     "李四"*/
-                ]
+                ],
+                timeout: 5000,        //5秒发一次心跳
+                timeoutObj: null,
+                serverTimeoutObj: null,
             }
         },
         created() {
@@ -166,15 +170,15 @@
         methods: {
             async init() {
                 sessionStorage.clear()
-                await axios.get("http://localhost:8080/user/getUsername").then(res => {
+                await axios.get("http://" + this.baseIp + ":8088/user/getUsername").then(res => {
                     this.username = res.data;
                 });
 
                 //创建webSocket对象
-                ws = new WebSocket("ws://localhost:8080/chat");
+                ws = new WebSocket("ws://" + this.baseIp + ":8088/chat");
 
                 //给ws绑定事件
-                ws.onopen = this.onopen;
+                ws.onopen = this.onOpen;
                 //接收到服务端推送的消息后触发
                 ws.onmessage = this.onMessage;
 
@@ -213,11 +217,30 @@
                 ws.send(JSON.stringify(this.sendMessage));
                 this.sendMessage.message = "";
             },
+            startHeartbeat() {
+                // 每隔 5 秒发送一次心跳消息
+                this.heartbeatInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        let heartBeatMsg = {"messageType": 5, "fromName": this.username}
+                        ws.send(JSON.stringify(heartBeatMsg));
+                        console.log("发送心跳！")
+                    }
+                }, 5000);
+            },
+            stopHeartbeat() {
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+            },
             onOpen() {
                 this.isOnline = true;
+                this.startHeartbeat();
+
             },
             onClose() {
                 this.isOnline = false;
+                this.stopHeartbeat();
             },
             onMessage(evt) {
                 //获取服务端推送过来的消息

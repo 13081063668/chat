@@ -54,6 +54,7 @@
         el:"#app",
         data() {
             return {
+                baseIp:"10.129.88.106",
                 errMessage: "",
                 user:{
                     username:"",
@@ -63,7 +64,7 @@
         },
         methods: {
             login() {
-                axios.post("http://localhost:8080/user/login",this.user).then(res => {
+                axios.post("http://" + this.baseIp + ":8088/user/login",this.user).then(res => {
                     //判断登陆是否成功
                     if(res.data.flag) {
                         location.href = "main.html"

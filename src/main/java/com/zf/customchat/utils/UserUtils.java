@@ -26,7 +26,7 @@ public class UserUtils {
         String username = userDocument.getString("username");
         String password = userDocument.getString("password");
         user.setUserId(id.toHexString());
-        user.setUserId(username);
+        user.setUsername(username);
         user.setPassword(password);
         return user;
     }

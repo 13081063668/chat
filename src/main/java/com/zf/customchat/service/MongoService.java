@@ -4,6 +4,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.InsertOneResult;
 import com.zf.customchat.pojo.bo.Message;
 import com.zf.customchat.pojo.bo.User;
 import com.zf.customchat.pojo.dbo.MessageDO;
@@ -65,6 +66,6 @@ public class MongoService {
         MongoDatabase chatDB = client.getDatabase("chatDB");
         MongoCollection<Document> chat = chatDB.getCollection("users");
         Document document = UserUtils.convertToDocument(user);
-        chat.insertOne(document);
+        InsertOneResult result = chat.insertOne(document);
     }
 }

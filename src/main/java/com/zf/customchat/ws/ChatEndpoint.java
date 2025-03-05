@@ -4,10 +4,12 @@ package com.zf.customchat.ws;
 import com.alibaba.fastjson.JSON;
 import com.zf.customchat.config.GetHttpSessionConfig;
 import com.zf.customchat.enums.MessageEnum;
+import com.zf.customchat.enums.UserLoginStatusEnum;
 import com.zf.customchat.pojo.bo.Message;
 
 import com.zf.customchat.pojo.dto.MessageDTO;
 import com.zf.customchat.service.MongoService;
+import com.zf.customchat.service.RedisService;
 import com.zf.customchat.utils.MessageUtils;
 import com.zf.customchat.utils.SpringContextHolder;
 import org.springframework.stereotype.Component;
@@ -26,6 +28,7 @@ public class ChatEndpoint {
 
     private MongoService mongoService;
 
+    private RedisService redisService;
     // 使用static静态变量，使对象绑定类
     private static final Map<String, Session> users = new ConcurrentHashMap<>();
     private HttpSession httpSession;
@@ -39,6 +42,7 @@ public class ChatEndpoint {
 
         // 通过 SpringContextHolder 获取服务实例
         mongoService = SpringContextHolder.getBean(MongoService.class);
+        redisService = SpringContextHolder.getBean(RedisService.class);
 
         // 1. 将session保存
         this.httpSession = (HttpSession) endpointConfig.getUserProperties().get(HttpSession.class.getName());
@@ -47,7 +51,7 @@ public class ChatEndpoint {
         System.out.println("username: " + username);
         // 上线
         users.put(username, session);
-
+        redisService.setStatus(username, UserLoginStatusEnum.Online);
         // 2. 广播消息，将所有用户推送给所有的用户
         Set<String> allUsers = getAllUsers();
         Message message = new Message();
@@ -56,6 +60,7 @@ public class ChatEndpoint {
         message.setMessageType(MessageEnum.SystemMessage);
         String msg = MessageUtils.getMessage(message);
         broadcastAllUsers(msg);
+
         // 3. 推送历史十条消息
         List<Message> history = mongoService.getHistory(username, new Date());
         Message historyMessage = new Message();
@@ -75,8 +80,13 @@ public class ChatEndpoint {
         try{
             // 遍历在线用户
             for (Map.Entry<String, Session> entry : users.entrySet()) {
-                Session session = entry.getValue();
-                session.getBasicRemote().sendText(msg);
+                String key = entry.getKey();
+                UserLoginStatusEnum status = redisService.getStatus(key);
+                if (UserLoginStatusEnum.Online.equals(status)){
+                    System.out.println("boast all users to " + key + " !");
+                    Session session = entry.getValue();
+                    session.getBasicRemote().sendText(msg);
+                }
             }
         }catch (IOException e){
             // 记录或处理异常
@@ -107,8 +117,11 @@ public class ChatEndpoint {
         historyMessage.setRead(false);
         historyMessage.setMessageType(MessageEnum.GetHistoryMessage);
         String historyMsg = MessageUtils.getMessage(historyMessage);
-        Session session = users.get(fromName);
-        if(session != null){
+        // 获取session
+        UserLoginStatusEnum statusEnum = redisService.getStatus(fromName);
+        if(UserLoginStatusEnum.Online.equals(statusEnum)){
+            // 在线
+            Session session = users.get(fromName);
             session.getBasicRemote().sendText(historyMsg);
         }
     }
@@ -123,8 +136,10 @@ public class ChatEndpoint {
         message.setMessageType(MessageEnum.CommonMessage);
 
         // 获取session
-        Session session = users.get(toName);
-        if (session != null){
+        UserLoginStatusEnum statusEnum = redisService.getStatus(toName);
+        if(UserLoginStatusEnum.Online.equals(statusEnum)){
+            // 在线
+            Session session = users.get(toName);
             String finalMsg = MessageUtils.getMessage(message);
             session.getBasicRemote().sendText(finalMsg);
         }
@@ -139,7 +154,8 @@ public class ChatEndpoint {
     @OnClose
     public void onClose(Session session) throws IOException {
         String username = (String) httpSession.getAttribute("user");
-        users.remove(username);
+        // 下线
+        redisService.setStatus(username, UserLoginStatusEnum.Offline);
         System.out.println("username:" + username + " is logout!");
         session.close();
 

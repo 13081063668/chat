@@ -5,9 +5,11 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.zf.customchat.pojo.bo.Message;
+import com.zf.customchat.pojo.bo.User;
 import com.zf.customchat.pojo.dbo.MessageDO;
 import com.zf.customchat.utils.MessageUtils;
 import com.zf.customchat.utils.MongoClientSingleton;
+import com.zf.customchat.utils.UserUtils;
 import org.bson.Document;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,7 @@ public class MongoService {
         Document document = convertToDocument(messageDO);
         chat.insertOne(document);
     }
+
     private Document convertToDocument(MessageDO messageDO) {
         Document document = new Document();
         document.append("fromName", messageDO.getFromName())
@@ -46,5 +49,22 @@ public class MongoService {
         List<Message> messages = MessageUtils.convertToMessageList(documents);
         Collections.reverse(messages);
         return messages;
+    }
+
+    public User queryUser(String username) {
+        MongoClient client = MongoClientSingleton.getInstance();
+        MongoDatabase chatDB = client.getDatabase("chatDB");
+        MongoCollection<Document> usersCollection = chatDB.getCollection("users");
+        Document userDocument = usersCollection.find(eq("username", username)).first();
+
+        return UserUtils.convertToUser(userDocument);
+    }
+
+    public void insertUser(User user) {
+        MongoClient client = MongoClientSingleton.getInstance();
+        MongoDatabase chatDB = client.getDatabase("chatDB");
+        MongoCollection<Document> chat = chatDB.getCollection("users");
+        Document document = UserUtils.convertToDocument(user);
+        chat.insertOne(document);
     }
 }

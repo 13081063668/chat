@@ -4,8 +4,11 @@ package com.zf.customchat.controller;
 
 import com.zf.customchat.pojo.bo.Result;
 import com.zf.customchat.pojo.bo.User;
+import com.zf.customchat.service.MongoService;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
 
@@ -13,6 +16,8 @@ import javax.servlet.http.HttpSession;
 @RequestMapping("/user")
 public class UserController {
 
+    @Resource
+    private MongoService mongoService;
     /**
      * 登陆
      * @param user 提交的用户数据，包含用户名和密码
@@ -22,7 +27,18 @@ public class UserController {
     @PostMapping("/login")
     public Result login(@RequestBody User user, HttpSession session) {
         Result result = new Result();
-        if(!StringUtils.isEmpty(user.getUsername()) && "123".equals(user.getPassword())) {
+        String username = user.getUsername();
+        User userFromDb = mongoService.queryUser(username);
+        if(userFromDb == null){
+            // 用户未注册，直接为用户注册
+            mongoService.insertUser(user);
+            // 登入成功
+            //将数据存储到session对象中
+            result.setFlag(true);
+            System.out.println(user.getUsername() + " is login!");
+            session.setAttribute("user", user.getUsername());
+        }
+        else if(userFromDb.getUsername().equals(user.getUsername()) && userFromDb.getPassword().equals(user.getPassword())) {
             //将数据存储到session对象中
             result.setFlag(true);
             System.out.println(user.getUsername() + " is login!");

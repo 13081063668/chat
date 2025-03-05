@@ -7,7 +7,6 @@ import com.zf.customchat.pojo.bo.Result;
 import com.zf.customchat.pojo.bo.User;
 import com.zf.customchat.service.MongoService;
 import com.zf.customchat.service.RedisService;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 

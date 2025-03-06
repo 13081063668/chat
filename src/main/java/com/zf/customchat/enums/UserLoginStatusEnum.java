@@ -16,10 +16,10 @@ public enum UserLoginStatusEnum {
 
     public static UserLoginStatusEnum ofEnum(Integer status){
         for (UserLoginStatusEnum value : UserLoginStatusEnum.values()) {
-            if (status.equals(value.getStatus())){
+            if (value.getStatus().equals(status)){
                 return value;
             }
         }
-        return null;
+        return UserLoginStatusEnum.Offline;
     }
 }

@@ -6,19 +6,20 @@ public enum MessageEnum {
     SystemMessage(2),
     LoginHistoryMessage(3),
     GetHistoryMessage(4),
+    HeartBeat(5)
     ;
-    private final Integer num;
-    MessageEnum(Integer num) {
-        this.num = num;
+    private final Integer type;
+    MessageEnum(Integer type) {
+        this.type = type;
     }
 
-    public Integer getNum() {
-        return num;
+    public Integer getType() {
+        return type;
     }
 
     public static MessageEnum ofEnum(Integer num){
         for (MessageEnum value : MessageEnum.values()) {
-            if (num.equals(value.getNum())){
+            if (num.equals(value.getType())){
                 return value;
             }
         }

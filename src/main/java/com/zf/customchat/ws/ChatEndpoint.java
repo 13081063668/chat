@@ -8,10 +8,12 @@ import com.zf.customchat.enums.UserLoginStatusEnum;
 import com.zf.customchat.pojo.bo.Message;
 
 import com.zf.customchat.pojo.dto.MessageDTO;
+import com.zf.customchat.service.ChatService;
 import com.zf.customchat.service.MongoService;
 import com.zf.customchat.service.RedisService;
 import com.zf.customchat.utils.MessageUtils;
 import com.zf.customchat.utils.SpringContextHolder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
@@ -26,12 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class ChatEndpoint {
 
-    private MongoService mongoService;
-
-    private RedisService redisService;
+    private ChatService chatService;
     // 使用static静态变量，使对象绑定类
     private static final Map<String, Session> users = new ConcurrentHashMap<>();
-    private HttpSession httpSession;
     /**
      * 建立websocket连接后调用
      * @param session
@@ -39,112 +38,16 @@ public class ChatEndpoint {
      */
     @OnOpen
     public void onOpen(Session session, EndpointConfig endpointConfig) throws IOException {
-
         // 通过 SpringContextHolder 获取服务实例
-        mongoService = SpringContextHolder.getBean(MongoService.class);
-        redisService = SpringContextHolder.getBean(RedisService.class);
+        chatService = SpringContextHolder.getBean(ChatService.class);
 
-        // 1. 将session保存
-        this.httpSession = (HttpSession) endpointConfig.getUserProperties().get(HttpSession.class.getName());
-
-        String username = this.httpSession.getAttribute("user").toString();
-        System.out.println("username: " + username);
-        // 上线
-        users.put(username, session);
-        redisService.setStatus(username, UserLoginStatusEnum.Online);
-        // 2. 广播消息，将所有用户推送给所有的用户
-        Set<String> allUsers = getAllUsers();
-        Message message = new Message();
-        message.setMessage(allUsers.toString());
-        message.setRead(false);
-        message.setMessageType(MessageEnum.SystemMessage);
-        String msg = MessageUtils.getMessage(message);
-        broadcastAllUsers(msg);
-
-        // 3. 推送历史十条消息
-        List<Message> history = mongoService.getHistory(username, new Date());
-        Message historyMessage = new Message();
-        historyMessage.setMessageList(history);
-        historyMessage.setRead(false);
-        historyMessage.setMessageType(MessageEnum.LoginHistoryMessage);
-        String historyMsg = MessageUtils.getMessage(historyMessage);
-        session.getBasicRemote().sendText(historyMsg);
+        chatService.onOpen(session, endpointConfig);
     }
 
-    private Set<String> getAllUsers() {
-        // 创建一个新的 HashSet 来存储所有用户
-        return users.keySet();
-    }
-
-    private void broadcastAllUsers(String msg){
-        try{
-            // 遍历在线用户
-            for (Map.Entry<String, Session> entry : users.entrySet()) {
-                String key = entry.getKey();
-                UserLoginStatusEnum status = redisService.getStatus(key);
-                if (UserLoginStatusEnum.Online.equals(status)){
-                    System.out.println("boast all users to " + key + " !");
-                    Session session = entry.getValue();
-                    session.getBasicRemote().sendText(msg);
-                }
-            }
-        }catch (IOException e){
-            // 记录或处理异常
-        }catch (Exception e){
-            // 记录或处理异常
-        }
-    }
     @OnMessage
     public void onMessage(String msg) throws IOException {
         // 消息推送
-        MessageDTO messageDTO = JSON.parseObject(msg, MessageDTO.class);
-        Message message = MessageUtils.dtoConvertToMessage(messageDTO);
-        if (MessageEnum.CommonMessage.equals(message.getMessageType())){
-            handleCommonMessage(message);
-        }else if(MessageEnum.GetHistoryMessage.equals(message.getMessageType())){
-            handleGetHistoryMessage(message);
-        }
-    }
-
-    private void handleGetHistoryMessage(Message message) throws IOException {
-        // 3. 推送历史十条消息
-        String toName = message.getToName();
-        String fromName = (String) httpSession.getAttribute("user");
-        Date lastTime = message.getSendTime();
-        List<Message> history = mongoService.getHistory(fromName, lastTime);
-        Message historyMessage = new Message();
-        historyMessage.setMessageList(history);
-        historyMessage.setRead(false);
-        historyMessage.setMessageType(MessageEnum.GetHistoryMessage);
-        String historyMsg = MessageUtils.getMessage(historyMessage);
-        // 获取session
-        UserLoginStatusEnum statusEnum = redisService.getStatus(fromName);
-        if(UserLoginStatusEnum.Online.equals(statusEnum)){
-            // 在线
-            Session session = users.get(fromName);
-            session.getBasicRemote().sendText(historyMsg);
-        }
-    }
-
-    private void handleCommonMessage(Message message) throws IOException {
-        String toName = message.getToName();
-        String fromName = (String) httpSession.getAttribute("user");
-
-        message.setFromName(fromName);
-        message.setSendTime(new Date());
-        message.setRead(false);
-        message.setMessageType(MessageEnum.CommonMessage);
-
-        // 获取session
-        UserLoginStatusEnum statusEnum = redisService.getStatus(toName);
-        if(UserLoginStatusEnum.Online.equals(statusEnum)){
-            // 在线
-            Session session = users.get(toName);
-            String finalMsg = MessageUtils.getMessage(message);
-            session.getBasicRemote().sendText(finalMsg);
-        }
-        // 存储消息记录
-        mongoService.insertChat(MessageUtils.convertToMongoDO(message));
+        chatService.onMessage(msg);
     }
 
     /**
@@ -153,12 +56,6 @@ public class ChatEndpoint {
      */
     @OnClose
     public void onClose(Session session) throws IOException {
-        String username = (String) httpSession.getAttribute("user");
-        // 下线
-        redisService.setStatus(username, UserLoginStatusEnum.Offline);
-        System.out.println("username:" + username + " is logout!");
-        session.close();
-
+        chatService.onClose(session);
     }
-
 }

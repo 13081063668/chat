@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Sorts.descending;
@@ -40,11 +41,15 @@ public class MongoService {
         return document;
     }
 
-    public List<Message> getHistory(String username, Date date) {
+    public List<Message> getHistory(String fromName, String toName, Date date) {
         MongoClient client = MongoClientSingleton.getInstance();
         MongoDatabase chatDB = client.getDatabase("chatDB");
         MongoCollection<Document> chat = chatDB.getCollection("chat");
-        FindIterable<Document> documents = chat.find(and(or(eq("fromName", username), eq("toName", username)), lt("sendTime", date)))
+
+        FindIterable<Document> documents = chat.find(and(or(
+                and(eq("fromName", fromName), eq("toName", toName)),
+                and(eq("fromName", toName), eq("toName", fromName))),
+                lt("sendTime", date)))
                 .sort(descending("sendTime"))
                 .limit(10);
         List<Message> messages = MessageUtils.convertToMessageList(documents);
@@ -64,8 +69,16 @@ public class MongoService {
     public void insertUser(User user) {
         MongoClient client = MongoClientSingleton.getInstance();
         MongoDatabase chatDB = client.getDatabase("chatDB");
-        MongoCollection<Document> chat = chatDB.getCollection("users");
+        MongoCollection<Document> users = chatDB.getCollection("users");
         Document document = UserUtils.convertToDocument(user);
-        InsertOneResult result = chat.insertOne(document);
+        InsertOneResult result = users.insertOne(document);
+    }
+
+    public List<String> getAllUsers() {
+        MongoClient client = MongoClientSingleton.getInstance();
+        MongoDatabase chatDB = client.getDatabase("chatDB");
+        MongoCollection<Document> users = chatDB.getCollection("users");
+        FindIterable<Document> documents = users.find();
+        return UserUtils.convertToUserList(documents);
     }
 }

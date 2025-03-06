@@ -132,6 +132,12 @@
                     messageType: 1,
                     sendTime: "",
                 },
+                getHistoryMessage: {
+                    toName: "",
+                    message: "",
+                    messageType: 1,
+                    sendTime: "",
+                },
                 inputMessage: "",
                 historyMessage: [
                     /*{toName: "李四", message: "你好,张三"},
@@ -190,19 +196,17 @@
                 //清除聊天区的数据
                 let history = sessionStorage.getItem(this.toName);
                 if (!history) {
-                    this.historyMessage = [];
+                    this.historyMessage = []
+                    this.onScrollToTop();
                 } else {
                     this.historyMessage = JSON.parse(history);
                 }
-                console.log("this.historyMessage")
-                console.log(this.historyMessage)
                 //展示聊天对话框
                 this.isShowChat = true;
                 //显示“正在和谁聊天”
                 this.chatMes = true;
                 this.$nextTick(() => {
                     const showElement = document.getElementById('show');
-                    console.log(showElement);
                     if (showElement) {
                         showElement.scrollTop = showElement.scrollHeight;
                     }
@@ -349,13 +353,12 @@
             onScrollToTop() {
                 // 当滚动到顶部时执行的逻辑
                 console.log('滚动条已到达顶部！');
-                if (this.historyMessage){
                     // 请求历史消息
-                    this.sendMessage.toName = this.toName;
-                    this.sendMessage.messageType = 4;
-                    this.sendMessage.sendTime = this.historyMessage[0].sendTime;
-                    ws.send(JSON.stringify(this.sendMessage));
-                }
+                this.getHistoryMessage.toName = this.toName;
+                this.getHistoryMessage.messageType = 4;
+                if (this.historyMessage.length > 0)
+                    this.getHistoryMessage.sendTime = this.historyMessage[0].sendTime;
+                ws.send(JSON.stringify(this.getHistoryMessage));
 
             }
         }

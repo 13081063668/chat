@@ -24,7 +24,7 @@ public class MessageUtils {
     public static String getMessage(Message message) {
 
         Result result = new Result();
-        result.setMessageType(message.getMessageType().getNum());
+        result.setMessageType(message.getMessageType().getType());
         result.setMessage(message.getMessage());
         result.setMessageList(message.getMessageList());
         if(message.getFromName() != null) {
@@ -37,7 +37,7 @@ public class MessageUtils {
         messageDO.setFromName(message.getFromName());
         messageDO.setToName(message.getToName());
         messageDO.setSendTime(message.getSendTime());
-        messageDO.setMessageType(message.getMessageType().getNum());
+        messageDO.setMessageType(message.getMessageType().getType());
         messageDO.setRead(message.getRead());
         messageDO.setMessage(message.getMessage());
         return messageDO;
@@ -75,6 +75,19 @@ public class MessageUtils {
         message.setFromName(messageDTO.getFromName());
         message.setToName(messageDTO.getToName());
         return message;
+    }
 
+    public static MessageDTO convertToMessageDTO(Message message) {
+        if(message == null){
+            return null;
+        }
+        MessageDTO messageDTO = new MessageDTO();
+        messageDTO.setMessage(message.getMessage());
+        messageDTO.setMessageType(message.getMessageType().getType());
+        messageDTO.setSendTime(message.getSendTime());
+        messageDTO.setFromName(message.getFromName());
+        messageDTO.setToName(message.getToName());
+
+        return messageDTO;
     }
 }

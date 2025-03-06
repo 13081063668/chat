@@ -37,4 +37,14 @@ public class UserUtils {
                 .append("password", user.getPassword());
         return document;
     }
+
+    public static List<String> convertToUserList(FindIterable<Document> documents) {
+        ArrayList<String> usersList = new ArrayList<>();
+        for (Document document : documents) {
+            User user = convertToUser(document);
+            if (user != null)
+                usersList.add(user.getUsername());
+        }
+        return usersList;
+    }
 }

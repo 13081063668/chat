@@ -8,7 +8,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 public class MongoClientSingleton {
-    private static MongoClient INSTANCE;
+    private volatile static MongoClient INSTANCE;
 
     private MongoClientSingleton() {}
 
